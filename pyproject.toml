@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "termzilla"
+version = "1.0.0"
+description = "A Terminal User Interface (TUI) file transfer client, alternative to FileZilla/WinSCP"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "TermZilla Contributors"}
+]
+keywords = ["sftp", "ftp", "terminal", "tui", "file-transfer", "ssh"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: File Transfer",
+    "Topic :: System :: Networking",
+]
+
+dependencies = [
+    "textual>=0.50.0",
+    "paramiko>=3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "textual-dev>=1.0.0",
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+termzilla = "termzilla.main:main"
+
+[project.urls]
+Homepage = "https://github.com/termzilla/termzilla"
+Repository = "https://github.com/termzilla/termzilla"
+Issues = "https://github.com/termzilla/termzilla/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+termzilla = ["*.tcss"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

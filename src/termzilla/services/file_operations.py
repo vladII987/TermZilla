@@ -1,0 +1,298 @@
+"""Local and remote file system backends."""
+
+import logging
+import os
+import shutil
+from pathlib import Path
+from typing import Any, Optional
+
+import paramiko
+from stat import S_ISDIR, S_ISLNK
+
+logger = logging.getLogger("termzilla")
+
+
+class LocalFileSystem:
+    """Local file system operations."""
+
+    def __init__(self) -> None:
+        self.current_path: str = str(Path.home())
+
+    def list_directory(self, path: Optional[str] = None) -> list[dict[str, Any]]:
+        """List directory contents.
+        
+        Args:
+            path: Directory to list (uses current_path if None)
+            
+        Returns:
+            List of file info dicts
+        """
+        target = Path(path or self.current_path).resolve()
+        entries = []
+        
+        for entry in target.iterdir():
+            try:
+                stat = entry.stat()
+                entries.append({
+                    "name": entry.name,
+                    "path": str(entry),
+                    "is_dir": entry.is_dir(),
+                    "is_link": entry.is_symlink(),
+                    "size": stat.st_size,
+                    "modified": stat.st_mtime,
+                    "permissions": oct(stat.st_mode)[-3:],
+                })
+            except PermissionError:
+                entries.append({
+                    "name": entry.name,
+                    "path": str(entry),
+                    "is_dir": False,
+                    "is_link": False,
+                    "size": 0,
+                    "modified": 0,
+                    "permissions": "---------",
+                    "error": "Permission denied",
+                })
+        
+        return sorted(entries, key=lambda e: (not e["is_dir"], e["name"].lower()))
+
+    def change_directory(self, path: str) -> str:
+        """Change current directory.
+        
+        Returns:
+            New current path
+        """
+        new_path = Path(path).resolve()
+        if not new_path.is_dir():
+            raise NotADirectoryError(f"Not a directory: {path}")
+        self.current_path = str(new_path)
+        return self.current_path
+
+    def get_current_path(self) -> str:
+        """Get current directory."""
+        return self.current_path
+
+    def get_file_info(self, path: str) -> dict[str, Any]:
+        """Get file/directory info."""
+        p = Path(path)
+        stat = p.stat()
+        return {
+            "name": p.name,
+            "path": str(p),
+            "is_dir": p.is_dir(),
+            "is_link": p.is_symlink(),
+            "size": stat.st_size,
+            "modified": stat.st_mtime,
+            "permissions": oct(stat.st_mode)[-3:],
+        }
+
+    def create_directory(self, path: str) -> None:
+        """Create a new directory."""
+        Path(path).mkdir(parents=True, exist_ok=True)
+
+    def delete(self, path: str) -> None:
+        """Delete a file or directory."""
+        p = Path(path)
+        if p.is_dir():
+            shutil.rmtree(p)
+        else:
+            p.unlink()
+
+    def rename(self, old_path: str, new_path: str) -> None:
+        """Rename or move a file/directory."""
+        Path(old_path).rename(new_path)
+
+    def copy(self, src_path: str, dest_path: str, callback=None) -> None:
+        """Copy a file or directory to destination."""
+        src = Path(src_path)
+        dest = Path(dest_path)
+        if src.is_dir():
+            total = sum(f.stat().st_size for f in src.rglob("*") if f.is_file())
+            state = [0]  # [transferred]
+            if dest.exists():
+                shutil.rmtree(dest)
+            self._copy_dir(src, dest, total, state, callback)
+        else:
+            total = src.stat().st_size
+            transferred = 0
+            with open(src, "rb") as fin, open(dest, "wb") as fout:
+                while True:
+                    data = fin.read(65536)
+                    if not data:
+                        break
+                    fout.write(data)
+                    transferred += len(data)
+                    if callback:
+                        callback(transferred, total)
+            shutil.copystat(src, dest)
+
+    def _copy_dir(self, src: Path, dest: Path, total: int, state: list, callback=None) -> None:
+        """Recursively copy a directory, reporting cumulative progress."""
+        dest.mkdir(parents=True, exist_ok=True)
+        for item in sorted(src.iterdir()):
+            d = dest / item.name
+            if item.is_dir():
+                self._copy_dir(item, d, total, state, callback)
+            else:
+                with open(item, "rb") as fin, open(d, "wb") as fout:
+                    while True:
+                        data = fin.read(65536)
+                        if not data:
+                            break
+                        fout.write(data)
+                        state[0] += len(data)
+                        if callback:
+                            callback(state[0], total)
+                shutil.copystat(item, d)
+        shutil.copystat(src, dest)
+
+
+class RemoteFileSystem:
+    """Remote SFTP file system operations."""
+
+    def __init__(self, sftp_client: paramiko.SFTPClient) -> None:
+        self.sftp = sftp_client
+        self.current_path: str = self.sftp.getcwd() or "/"
+
+    def list_directory(self, path: Optional[str] = None) -> list[dict[str, Any]]:
+        """List remote directory contents.
+        
+        Args:
+            path: Directory to list (uses current_path if None)
+            
+        Returns:
+            List of file info dicts
+        """
+        target = path or self.current_path
+        target = self.sftp.normalize(target)
+        entries = []
+        
+        for entry in self.sftp.listdir_attr(target):
+            mode = entry.st_mode if entry.st_mode else 0
+            entry_path = f"{target.rstrip('/')}/{entry.filename}"
+            
+            entries.append({
+                "name": entry.filename,
+                "path": entry_path,
+                "is_dir": S_ISDIR(mode),
+                "is_link": S_ISLNK(mode),
+                "size": entry.st_size or 0,
+                "modified": entry.st_mtime or 0,
+                "permissions": entry.longname[:12] if entry.longname else "-",
+            })
+        
+        return sorted(entries, key=lambda e: (not e["is_dir"], e["name"].lower()))
+
+    def change_directory(self, path: str) -> str:
+        """Change current directory.
+        
+        Returns:
+            New current path
+        """
+        normalized = self.sftp.normalize(path)
+        try:
+            self.sftp.chdir(normalized)
+            self.current_path = normalized
+        except Exception:
+            # chdir might fail, try to verify it's a directory
+            try:
+                self.sftp.stat(normalized)
+                self.current_path = normalized
+            except Exception as e:
+                raise OSError(f"Cannot change to directory: {path}: {e}")
+        return self.current_path
+
+    def get_current_path(self) -> str:
+        """Get current directory."""
+        return self.current_path
+
+    def get_file_info(self, path: str) -> dict[str, Any]:
+        """Get remote file/directory info."""
+        stat = self.sftp.stat(path)
+        mode = stat.st_mode if stat.st_mode else 0
+        return {
+            "name": Path(path).name,
+            "path": path,
+            "is_dir": S_ISDIR(mode),
+            "is_link": S_ISLNK(mode),
+            "size": stat.st_size or 0,
+            "modified": stat.st_mtime or 0,
+            "permissions": "-",
+        }
+
+    def create_directory(self, path: str) -> None:
+        """Create a new directory."""
+        self.sftp.mkdir(path)
+
+    def delete(self, path: str) -> None:
+        """Delete a remote file or directory."""
+        try:
+            # Try to remove as file first
+            self.sftp.remove(path)
+        except IOError:
+            # Try as directory
+            try:
+                self.sftp.rmdir(path)
+            except IOError as e:
+                raise OSError(f"Cannot delete {path}: {e}")
+
+    def rename(self, old_path: str, new_path: str) -> None:
+        """Rename or move a remote file/directory."""
+        self.sftp.rename(old_path, new_path)
+
+    def copy(self, src_path: str, dest_path: str, callback=None) -> None:
+        """Copy a remote file or directory to destination.
+
+        For remote files, we read content and write to dest.
+        For directories, recursively copy.
+        """
+        src_stat = self.sftp.stat(src_path)
+        mode = src_stat.st_mode if src_stat.st_mode else 0
+        if S_ISDIR(mode):
+            total = self._remote_dir_size(src_path)
+            state = [0]  # [transferred]
+            self._copy_remote_dir(src_path, dest_path, total, state, callback)
+        else:
+            total = src_stat.st_size or 0
+            self._copy_remote_file(src_path, dest_path, total, [0], callback)
+
+    def _remote_dir_size(self, path: str) -> int:
+        """Recursively calculate total size of a remote directory."""
+        total = 0
+        for entry in self.sftp.listdir_attr(path):
+            mode = entry.st_mode if entry.st_mode else 0
+            if S_ISDIR(mode):
+                total += self._remote_dir_size(f"{path.rstrip('/')}/{entry.filename}")
+            elif not S_ISLNK(mode):
+                total += entry.st_size or 0
+        return total
+
+    def _copy_remote_file(self, src: str, dest: str, total: int, state: list, callback=None) -> None:
+        """Copy a single remote file, updating cumulative progress state."""
+        with self.sftp.file(src, "rb") as fin:
+            with self.sftp.file(dest, "wb") as fout:
+                while True:
+                    data = fin.read(65536)
+                    if not data:
+                        break
+                    fout.write(data)
+                    state[0] += len(data)
+                    if callback:
+                        callback(state[0], total)
+
+    def _copy_remote_dir(self, src: str, dest: str, total: int, state: list, callback=None) -> None:
+        """Recursively copy a remote directory with cumulative progress."""
+        try:
+            self.sftp.mkdir(dest)
+        except IOError:
+            pass  # may already exist
+        for entry in self.sftp.listdir_attr(src):
+            src_entry = f"{src.rstrip('/')}/{entry.filename}"
+            dest_entry = f"{dest.rstrip('/')}/{entry.filename}"
+            mode = entry.st_mode if entry.st_mode else 0
+            if S_ISDIR(mode):
+                self._copy_remote_dir(src_entry, dest_entry, total, state, callback)
+            elif S_ISLNK(mode):
+                continue  # skip symlinks
+            else:
+                self._copy_remote_file(src_entry, dest_entry, total, state, callback)

@@ -1,0 +1,8 @@
+textual>=0.50.0
+paramiko>=3.0.0
+
+[dev]
+textual-dev>=1.0.0
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+ruff>=0.1.0
