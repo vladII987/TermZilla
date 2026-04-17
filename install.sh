@@ -10,10 +10,20 @@ info() { echo -e "${GREEN}[termzilla]${NC} $*"; }
 warn() { echo -e "${YELLOW}[warn]${NC} $*"; }
 fail() { echo -e "${RED}[error]${NC} $*" >&2; exit 1; }
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR="/usr/lib/termzilla"
 BIN="/usr/bin/termzilla"
-VERSION=$(grep '^version' "$SCRIPT_DIR/pyproject.toml" | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+REPO="vladII987/TermZilla"
+
+# Fetch latest tag from GitHub
+VERSION=$(curl -fsSL "https://api.github.com/repos/$REPO/tags" | grep '"name"' | head -1 | sed 's/.*"name": *"\(.*\)".*/\1/')
+[[ -z "$VERSION" ]] && fail "Could not fetch latest version from GitHub"
+info "Latest version: $VERSION"
+
+# Download and extract source
+TMPDIR=$(mktemp -d)
+trap 'rm -rf "$TMPDIR"' EXIT
+curl -fsSL "https://github.com/$REPO/archive/refs/tags/${VERSION}.tar.gz" | tar -xz -C "$TMPDIR"
+SCRIPT_DIR="$TMPDIR/TermZilla-${VERSION}"
 
 [[ $EUID -ne 0 ]] && fail "Run with sudo: sudo bash $0"
 
