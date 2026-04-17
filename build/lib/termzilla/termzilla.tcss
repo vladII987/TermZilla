@@ -1,0 +1,246 @@
+/* TermZilla — minimal monochrome */
+
+Screen {
+    background: #0f0f0f;
+    color: #b0b0b0;
+}
+
+/* ── Connection toolbar ────────────────────────────────────────────── */
+
+#connect-toolbar {
+    dock: top;
+    height: 4;
+    background: #0f0f0f;
+    padding: 0 1;
+    overflow-x: auto;
+}
+
+.conn-field {
+    width: 1fr;
+    min-width: 14;
+    height: 4;
+    padding: 0 1 0 0;
+}
+
+.conn-field-port {
+    width: 10;
+    min-width: 10;
+}
+
+.conn-label {
+    color: #555555;
+    height: 1;
+    padding: 0 0;
+}
+
+.conn-input {
+    background: #0f0f0f;
+    border: tall #2a2a2a;
+    color: #b0b0b0;
+    height: 3;
+    width: 100%;
+}
+
+.conn-input:focus {
+    border: tall #707070;
+    color: #e0e0e0;
+}
+
+.conn-field-proto {
+    width: 14;
+    min-width: 14;
+}
+
+.conn-proto {
+    height: 3;
+    background: #0f0f0f;
+    border: tall #2a2a2a;
+    color: #b0b0b0;
+}
+
+.conn-proto:focus {
+    border: tall #707070;
+}
+
+Select > .select--list {
+    background: #1a1a1a;
+    border: solid #383838;
+    color: #b0b0b0;
+}
+
+Select > .select--option {
+    background: #1a1a1a;
+    color: #b0b0b0;
+}
+
+Select > .select--option-highlighted {
+    background: #2a2a2a;
+    color: #e0e0e0;
+}
+
+.conn-btn {
+    background: #2a2a2a;
+    color: #e0e0e0;
+    border: none;
+    height: 3;
+    margin: 1 0 0 1;
+    min-width: 12;
+}
+
+.conn-btn:hover {
+    background: #383838;
+}
+
+.conn-btn-disconnect {
+    background: #2a2a2a;
+    color: #888888;
+    border: none;
+    height: 3;
+    margin: 1 0 0 1;
+    min-width: 12;
+}
+
+.conn-btn-disconnect:hover {
+    background: #383838;
+    color: #b0b0b0;
+}
+
+/* ── Status log ────────────────────────────────────────────────────── */
+
+#status-log {
+    height: 4;
+    background: #0f0f0f;
+    color: #555555;
+    border-top: solid #1e1e1e;
+    border-bottom: solid #1e1e1e;
+    padding: 0 1;
+}
+
+/* ── Path bar ──────────────────────────────────────────────────────── */
+
+#path-bar {
+    height: 1;
+    background: #0f0f0f;
+}
+
+#local-path-label {
+    width: 1fr;
+    color: #555555;
+    background: #0f0f0f;
+    padding: 0 1;
+    border-right: solid #1e1e1e;
+}
+
+#local-path-label.pane-active {
+    color: #d0d0d0;
+}
+
+#remote-path-label {
+    width: 1fr;
+    color: #555555;
+    background: #0f0f0f;
+    padding: 0 1;
+}
+
+#remote-path-label.pane-active {
+    color: #d0d0d0;
+}
+
+/* ── Dual-pane browser ─────────────────────────────────────────────── */
+
+#browser-layout {
+    height: 1fr;
+    margin: 0;
+}
+
+#local-pane {
+    width: 1fr;
+    height: 100%;
+    border-right: solid #1e1e1e;
+}
+
+#local-pane.pane-active {
+    border-right: solid #484848;
+}
+
+#remote-pane {
+    width: 1fr;
+    height: 100%;
+}
+
+#remote-pane.pane-active {
+    border-left: solid #484848;
+}
+
+#remote-placeholder {
+    height: 1fr;
+    content-align: center middle;
+    color: #333333;
+    background: #0f0f0f;
+}
+
+FileTable {
+    height: 1fr;
+    background: #0f0f0f;
+}
+
+FileTable:focus {
+    border: none;
+}
+
+FileTable > .datatable--header {
+    background: #0f0f0f;
+    color: #555555;
+    text-style: bold;
+}
+
+FileTable > .datatable--cursor {
+    background: #252525;
+    color: #e0e0e0;
+    text-style: none;
+}
+
+FileTable > .datatable--even-row {
+    background: #0f0f0f;
+}
+
+FileTable > .datatable--odd-row {
+    background: #0f0f0f;
+}
+
+/* ── Transfer queue ────────────────────────────────────────────────── */
+
+#queue-header {
+    height: 1;
+    background: #0f0f0f;
+    color: #444444;
+    border-top: solid #1e1e1e;
+    padding: 0 1;
+}
+
+#progress-bar {
+    height: 1;
+    background: #0f0f0f;
+    color: #707070;
+    padding: 0 1;
+}
+
+/* ── Status bar (prompt mode) ──────────────────────────────────────── */
+
+#status-bar {
+    dock: bottom;
+    height: 1;
+    background: #0f0f0f;
+    color: #b0b0b0;
+    padding: 0 1;
+    border-top: solid #1e1e1e;
+}
+
+/* ── Key hints ─────────────────────────────────────────────────────── */
+
+#key-hints {
+    dock: bottom;
+    height: 1;
+    background: #0f0f0f;
+    padding: 0 0;
+}

@@ -13,6 +13,7 @@ fail() { echo -e "${RED}[error]${NC} $*" >&2; exit 1; }
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR="/usr/lib/termzilla"
 BIN="/usr/bin/termzilla"
+VERSION=$(grep '^version' "$SCRIPT_DIR/pyproject.toml" | head -1 | sed 's/.*= *"\(.*\)"/\1/')
 
 [[ $EUID -ne 0 ]] && fail "Run with sudo: sudo bash $0"
 
@@ -102,6 +103,6 @@ chmod 755 "$BIN"
 
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║  TermZilla 1.0.0 installed!              ║${NC}"
+printf "${GREEN}║  TermZilla %-5s installed!              ║${NC}\n" "$VERSION"
 echo -e "${GREEN}║  Run: termzilla                          ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════╝${NC}"
